@@ -1,6 +1,7 @@
 import ure
-
+# import machine
 from ucollections import namedtuple
+
 from umqtt.simple import MQTTClient
 
 
@@ -24,26 +25,26 @@ class MessageHandlerBase:
 
 class MQTTRouter:
 
-    wildcard_regex_plus = '([^/]+)'
+    wildcard_regex_plus = b'([^/]+)'
     _RegexTopic = namedtuple('RegexTopic', ['ure_obj', 'group_count'])
 
     def __init__(self):
         self._handlers_map = []
 
-    def _resolve_handlers(self, topic):
+    def _resolve_handlers(self, recv_topic):
 
         def get_args(match, group_count):
             args = [match.group(index) for index in range(1, group_count + 1)]
 
         handlers = []
 
-        for topic_cmp, handler in self.handlers_map:
+        for topic_cmp, handler in self._handlers_map:
             if isinstance(topic_cmp, self._RegexTopic):
-                match = topic.ure_obj.match(recv_topic)
+                match = topic_cmp.ure_obj.match(recv_topic)
                 if match:
                     args = get_args(match, topic_cmp.group_count)
                     handlers.append((handler, args))
-            elif topic_cmp == topic:
+            elif topic_cmp == recv_topic:
                 handlers.append((handler, []))
 
         return handlers
@@ -60,9 +61,9 @@ class MQTTRouter:
     def _get_regex_if_needed(self, topic):
         wildcard_count = topic.count(b'+')
         if wildcard_count:
-            return namedtuple(
+            return self._RegexTopic(
                 ure_obj=ure.compile(
-                    topic.replace('+', self.wildcard_regex_plus)),
+                    topic.replace(b'+', self.wildcard_regex_plus)),
                 group_count=wildcard_count)
         else:
             return topic
@@ -83,6 +84,7 @@ class MQTTRpc:
     def __init__(self, id, server):
         self._client = MQTTClient(id, server)
         self._router = self.router_class()
+        self._timer = machine.Timer(-1)
 
     def _init_router(self):
         if self.handler_classes is None:
@@ -102,10 +104,10 @@ class MQTTRpc:
         self._client.connect()
         self._init_router()
 
-        # TODO: replace this with time
-        # NOTWORKING: no message is received
-        while True:
-            self._client.wait_msg()
+        self._timer.init(
+            period=500, mode=machine.Timer.PERIODIC,
+            callback=lambda t: self._client.check_msg())
 
     def stop(self):
         self._client.disconnect()
+        self._timer.deinit()
