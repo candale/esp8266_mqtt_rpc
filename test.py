@@ -13,11 +13,18 @@ class OneArgumentHandler(MessageHandlerBase):
         print(topic_kind, msg)
 
 
+class TwoArgumentHandler(MessageHandlerBase):
+
+    def process_message(self, topic_kind, topic_kind_level, msg=None):
+        print(topic_kind, topic_kind_level, msg)
+
+
 class MyMQTTRpc(MQTTRpc):
 
     handler_classes = (
         (b'my/topic', ConsoleHandler),
-        (b'my/+/topic', ConsoleHandler))
+        (b'my/+/topic', OneArgumentHandler),
+        (b'my/+/+/topic', TwoArgumentHandler))
 
 
 rpc = MyMQTTRpc(b'lol', '212.47.229.77')

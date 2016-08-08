@@ -1,5 +1,5 @@
 import ure
-# import machine
+import machine
 from ucollections import namedtuple
 
 from umqtt.simple import MQTTClient
@@ -34,7 +34,7 @@ class MQTTRouter:
     def _resolve_handlers(self, recv_topic):
 
         def get_args(match, group_count):
-            args = [match.group(index) for index in range(1, group_count + 1)]
+            return [match.group(index) for index in range(1, group_count + 1)]
 
         handlers = []
 
