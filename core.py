@@ -80,6 +80,7 @@ class MQTTRpc:
     router_class = MQTTRouter
     # An iterable of the form ((<topic, <topic_handler_clas), ...)
     handler_classes = None
+    spec_topic = 'devices/%s/spec' % str(int.from_bytes(machine.unique_id()))
 
     def __init__(self, id, server):
         self._client = MQTTClient(id, server)
@@ -94,8 +95,17 @@ class MQTTRpc:
         for topic, handler_cls in self.handler_classes:
             # TODO: maybe pass a wrapper of the client with limited functions
             #       (e.g. subscribe and send)
+            handler = handler_cls(self._client)
+            spec = handler.get_spec()
+
+            if not spec:
+                raise ValueError(
+                    'Improperly configured: handler %s does not have spec'
+                    % handler_cls.__name__)
+
             self._router.register_handler(topic, handler_cls(self._client))
             self._client.subscribe(topic)
+            self._client.publish(self.spec_topic, spec)
 
     def start(self):
         if self.router_class is None:
