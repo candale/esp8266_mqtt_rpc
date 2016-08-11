@@ -80,7 +80,8 @@ class MQTTRpc:
     router_class = MQTTRouter
     # An iterable of the form ((<topic, <topic_handler_clas), ...)
     handler_classes = None
-    spec_topic = 'devices/%s/spec' % str(int.from_bytes(machine.unique_id()))
+    unique_id = str(int.from_bytes(machine.unique_id()))
+    spec_topic = 'devices/%s/spec' % unique_id
 
     def __init__(self, id, server):
         self._client = MQTTClient(id, server)
