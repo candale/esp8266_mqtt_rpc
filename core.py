@@ -42,6 +42,7 @@ class MQTTRouter:
             if isinstance(topic_cmp, self._RegexTopic):
                 match = topic_cmp.ure_obj.match(recv_topic)
                 if match:
+                    # TODO: would be nice to send integers as integers not strings
                     args = get_args(match, topic_cmp.group_count)
                     handlers.append((handler, args))
             elif topic_cmp == recv_topic:
@@ -72,6 +73,7 @@ class MQTTRouter:
         '''
         Registers a handler
         '''
+        # TODO: replace the regex if possible. i think it takes a lot of mem
         self._handlers_map.append((self._get_regex_if_needed(topic), handler))
 
 
@@ -85,14 +87,14 @@ class MQTTRpc:
 
     def __init__(self, id, server):
         self._client = MQTTClient(id, server)
-        self._router = self.router_class()
+        self._router = None
         self._timer = machine.Timer(-1)
 
     def _init_router(self):
         if self.handler_classes is None:
             raise ValueError('Improperly configured: no handlers')
 
-        self.router = self.router_class()
+        self._router = self.router_class()
         for topic, handler_cls in self.handler_classes:
             # TODO: maybe pass a wrapper of the client with limited functions
             #       (e.g. subscribe and send)
@@ -108,15 +110,17 @@ class MQTTRpc:
             self._client.subscribe(topic)
             self._client.publish(self.spec_topic, spec)
 
-    def start(self):
+    def start(self, period=500):
         if self.router_class is None:
             raise ValueError('Improperly configured: no router configured')
-        self._client.set_callback(self._router)
-        self._client.connect()
-        self._init_router()
 
+        if self._router is None:
+            self._init_router()
+            self._client.set_callback(self._router)
+
+        self._client.connect()
         self._timer.init(
-            period=500, mode=machine.Timer.PERIODIC,
+            period=period, mode=machine.Timer.PERIODIC,
             callback=lambda t: self._client.check_msg())
 
     def stop(self):
