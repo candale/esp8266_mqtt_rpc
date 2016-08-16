@@ -107,18 +107,22 @@ class MQTTRpc:
                     % handler_cls.__name__)
 
             self._router.register_handler(topic, handler_cls(self._client))
-            self._client.subscribe(topic)
             self._client.publish(self.spec_topic, topic + '|' + spec)
 
     def start(self, period=500):
+        # TODO: call things in right order
         if self.router_class is None:
             raise ValueError('Improperly configured: no router configured')
+
+        self._client.connect()
 
         if self._router is None:
             self._init_router()
             self._client.set_callback(self._router)
 
-        self._client.connect()
+        for topic, _ in self.handler_classes:
+            self._client.subscribe(topic)
+
         self._timer.init(
             period=period, mode=machine.Timer.PERIODIC,
             callback=lambda t: self._client.check_msg())
