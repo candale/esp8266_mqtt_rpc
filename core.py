@@ -108,7 +108,7 @@ class MQTTRpc:
 
             self._router.register_handler(topic, handler_cls(self._client))
             self._client.subscribe(topic)
-            self._client.publish(self.spec_topic, spec)
+            self._client.publish(self.spec_topic, topic + '|' + spec)
 
     def start(self, period=500):
         if self.router_class is None:
