@@ -82,11 +82,13 @@ class MQTTRpc:
     router_class = MQTTRouter
     # An iterable of the form ((<topic, <topic_handler_clas), ...)
     handler_classes = None
-    unique_id = str(int.from_bytes(machine.unique_id()))
-    spec_topic = 'devices/%s/spec' % unique_id
+    name = None
 
-    def __init__(self, id, server):
-        self._client = MQTTClient(id, server)
+    _spec_topic = 'devices/%s/spec' % _unique_id
+    _unique_id = str(int.from_bytes(machine.unique_id()))
+
+    def __init__(self, server):
+        self._client = MQTTClient(self.get_id(), server)
         self._router = None
         self._timer = machine.Timer(-1)
 
@@ -112,8 +114,13 @@ class MQTTRpc:
 
         return handlers_info
 
+    def get_id(self):
+        if self.name is not None:
+            return str(self.name) + '_' + self._unique_id
+        else:
+            return self._unique_id
+
     def start(self, period=500):
-        # TODO: call things in right order
         if self.router_class is None:
             raise ValueError('Improperly configured: no router configured')
 
@@ -126,7 +133,7 @@ class MQTTRpc:
             for topic, spec in handlers_info:
                 self._client.subscribe(topic)
                 self._client.publish(
-                    self.spec_topic,
+                    self._spec_topic,
                     '{}|{}'.format(topic.decode('utf-8'), spec))
 
         self._timer.init(
