@@ -83,12 +83,22 @@ class MQTTRpc:
     # An iterable of the form ((<topic>, <topic_handler_class>), ...)
     handler_classes = None
     name = None
+    last_will_retain = False
+    last_will_qos = 0
+    server = None
+    port = 1883
+    keepalive = 180
 
     _unique_id = str(int.from_bytes(machine.unique_id()))
     _spec_topic = 'devices/{}/spec'
 
-    def __init__(self, server, keepalive=0):
-        self._client = MQTTClient(self.get_id(), server, keepalive=keepalive)
+    def __init__(self):
+        assert self.server, 'No server'
+        self._client = MQTTClient(
+            self.get_id(), self.server, keepalive=self.keepalive)
+        self._client.set_last_will(
+            self.get_last_will_topic(), self.get_last_will_message(),
+            qos=self.last_will_qos, retain=self.last_will_retain)
         self._router = None
         self._timer = machine.Timer(-1)
 
@@ -122,6 +132,12 @@ class MQTTRpc:
             return str(self.name) + '_' + self._unique_id
         else:
             return self._unique_id
+
+    def get_last_will_topic(self):
+        return 'devices/' + self.get_id() + '/offline'
+
+    def get_last_will_message(self):
+        return 'offline'
 
     def start(self, period=500):
         # TODO: add last will and maybe a message when the device has connected
