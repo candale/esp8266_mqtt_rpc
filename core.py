@@ -87,8 +87,8 @@ class MQTTRpc:
     _unique_id = str(int.from_bytes(machine.unique_id()))
     _spec_topic = 'devices/{}/spec'
 
-    def __init__(self, server):
-        self._client = MQTTClient(self.get_id(), server)
+    def __init__(self, server, keepalive=0):
+        self._client = MQTTClient(self.get_id(), server, keepalive=keepalive)
         self._router = None
         self._timer = machine.Timer(-1)
 
