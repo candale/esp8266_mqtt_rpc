@@ -23,30 +23,43 @@ class MessageHandlerBase:
         '''
 
 
-class MQTTRouter:
+def match_topic(raw_topic, to_match):
+    '''
+    Matches a topic to a raw topic
+    Returns a a boolean that indicates if the topics match and a list
+    with all the arguments that were send (instead of +)
+    '''
+    args = []
+    if '+' not in raw_topic:
+        return str(raw_topic) == str(to_match), args
 
-    wildcard_regex_plus = b'([^/]+)'
-    _RegexTopic = namedtuple('RegexTopic', ['ure_obj', 'group_count'])
+    raw_topic_split = str(raw_topic).split('/')
+    to_match_split = str(to_match).split('/')
+
+    if len(raw_topic_split) != len(to_match_split):
+        return False, args
+
+    for raw, match in zip(raw_topic_split, to_match_split):
+        if raw == '+':
+            args.append(match)
+        elif raw != match:
+            return False, []
+
+    return True, args
+
+
+class MQTTRouter:
 
     def __init__(self):
         self._handlers_map = []
 
     def _resolve_handlers(self, recv_topic):
-
-        def get_args(match, group_count):
-            return [match.group(index) for index in range(1, group_count + 1)]
-
         handlers = []
 
         for topic_cmp, handler in self._handlers_map:
-            if isinstance(topic_cmp, self._RegexTopic):
-                match = topic_cmp.ure_obj.match(recv_topic)
-                if match:
-                    # TODO: would be nice to send integers as integers not strings
-                    args = get_args(match, topic_cmp.group_count)
-                    handlers.append((handler, args))
-            elif topic_cmp == recv_topic:
-                handlers.append((handler, []))
+            is_match, args = match_topic(topic_cmp, recv_topic)
+            if is_match:
+                handlers.append((handler, args))
 
         return handlers
 
@@ -60,11 +73,11 @@ class MQTTRouter:
             handler.process_message(*args, msg=msg)
 
     def _get_regex_if_needed(self, topic):
-        wildcard_count = topic.count(b'+')
+        wildcard_count = topic.count('+')
         if wildcard_count:
             return self._RegexTopic(
                 ure_obj=ure.compile(
-                    topic.replace(b'+', self.wildcard_regex_plus)),
+                    topic.replace('+', self.wildcard_regex_plus)),
                 group_count=wildcard_count)
         else:
             return topic
@@ -73,12 +86,12 @@ class MQTTRouter:
         '''
         Registers a handler
         '''
-        # TODO: replace the regex if possible. i think it takes a lot of mem
-        self._handlers_map.append((self._get_regex_if_needed(topic), handler))
+        self._handlers_map.append((topic, handler))
 
 
 class MQTTRpc:
 
+    # TODO: add keepalive timer
     router_class = MQTTRouter
     # An iterable of the form ((<topic>, <topic_handler_class>), ...)
     handler_classes = None
@@ -90,10 +103,10 @@ class MQTTRpc:
     keepalive = 180
 
     _unique_id = str(int.from_bytes(machine.unique_id()))
-    _spec_topic = b'devices/{}/spec'
+    _spec_topic = 'devices/{}/spec'
 
     def __init__(self):
-        assert self.server, b'No server'
+        assert self.server, 'No server'
         self._client = MQTTClient(
             self.get_id(), self.server, keepalive=self.keepalive)
         self._client.set_last_will(
@@ -104,7 +117,7 @@ class MQTTRpc:
 
     def _init_router(self):
         if self.handler_classes is None:
-            raise ValueError(b'Improperly configured: no handlers')
+            raise ValueError('Improperly configured: no handlers')
 
         self._router = self.router_class()
         handlers_info = []
@@ -116,7 +129,7 @@ class MQTTRpc:
 
             if not spec:
                 raise ValueError(
-                    b'Improperly configured: handler %s does not have spec'
+                    'Improperly configured: handler %s does not have spec'
                     % handler_cls.__name__)
 
             self._router.register_handler(topic, handler_cls(self._client))
@@ -134,15 +147,14 @@ class MQTTRpc:
             return self._unique_id
 
     def get_last_will_topic(self):
-        return b'devices/' + self.get_id() + b'/offline'
+        return 'devices/' + self.get_id() + '/offline'
 
     def get_last_will_message(self):
-        return b'offline'
+        return 'offline'
 
     def start(self, period=500):
-        # TODO: add last will and maybe a message when the device has connected
         if self.router_class is None:
-            raise ValueError(b'Improperly configured: no router configured')
+            raise ValueError('Improperly configured: no router configured')
 
         self._client.connect()
 
@@ -156,6 +168,7 @@ class MQTTRpc:
                     self._spec_topic.format(self.get_id()),
                     '{}|{}'.format(topic.decode('utf-8'), spec))
 
+        # In case of failure, kill the timer somehow
         self._timer.init(
             period=period, mode=machine.Timer.PERIODIC,
             callback=lambda t: self._client.check_msg())
