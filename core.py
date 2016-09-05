@@ -90,10 +90,10 @@ class MQTTRpc:
     keepalive = 180
 
     _unique_id = str(int.from_bytes(machine.unique_id()))
-    _spec_topic = 'devices/{}/spec'
+    _spec_topic = b'devices/{}/spec'
 
     def __init__(self):
-        assert self.server, 'No server'
+        assert self.server, b'No server'
         self._client = MQTTClient(
             self.get_id(), self.server, keepalive=self.keepalive)
         self._client.set_last_will(
@@ -104,7 +104,7 @@ class MQTTRpc:
 
     def _init_router(self):
         if self.handler_classes is None:
-            raise ValueError('Improperly configured: no handlers')
+            raise ValueError(b'Improperly configured: no handlers')
 
         self._router = self.router_class()
         handlers_info = []
@@ -116,7 +116,7 @@ class MQTTRpc:
 
             if not spec:
                 raise ValueError(
-                    'Improperly configured: handler %s does not have spec'
+                    b'Improperly configured: handler %s does not have spec'
                     % handler_cls.__name__)
 
             self._router.register_handler(topic, handler_cls(self._client))
@@ -134,15 +134,15 @@ class MQTTRpc:
             return self._unique_id
 
     def get_last_will_topic(self):
-        return 'devices/' + self.get_id() + '/offline'
+        return b'devices/' + self.get_id() + b'/offline'
 
     def get_last_will_message(self):
-        return 'offline'
+        return b'offline'
 
     def start(self, period=500):
         # TODO: add last will and maybe a message when the device has connected
         if self.router_class is None:
-            raise ValueError('Improperly configured: no router configured')
+            raise ValueError(b'Improperly configured: no router configured')
 
         self._client.connect()
 
