@@ -89,7 +89,8 @@ class MQTTRouter:
         self._handlers_map.append((topic, handler))
 
 
-# TODO: break this class somehow that it could run in CPython with little changes
+# TODO: break this class somehow that it could run in CPython with little
+#       changes ... maybe ... or just develop another, separate package
 class MQTTRpc:
 
     # TODO: add keepalive timer
@@ -156,6 +157,26 @@ class MQTTRpc:
     def get_last_will_message(self):
         return 'offline'
 
+    def _safe_mqtt_call(self, callback):
+        '''
+        Robust version for calling mqtt methods. In case of connection error,
+        it will try to reconnect.
+        Inspired by umqtt.robust
+        '''
+        try:
+            callback()
+            return
+        except OSError:
+            for i in range(2):
+                try:
+                    self._client.connect(False)
+                    print('mqtt connection back')
+                    callback()
+                    return
+                except OSError:
+                    pass
+        print('mqtt lost connection')
+
     def start(self, period=500):
         if self.router_class is None:
             raise ValueError('Improperly configured: no router configured')
@@ -172,15 +193,15 @@ class MQTTRpc:
                     self._spec_topic.format(self.get_id()),
                     '{}|{}'.format(topic.decode('utf-8'), spec))
 
-        # In case of failure, kill the timer somehow
         self._check_msg_timer.init(
             period=period, mode=machine.Timer.PERIODIC,
-            callback=lambda t: self._client.check_msg())
+            callback=lambda t: self._safe_mqtt_call(self._client.check_msg))
 
         if self.self_keepalive:
             self._keepalive_timer.init(
-                period=int(self.keepalive / 2) * 1000, mode=machine.Timer.PERIODIC,
-                callback=lambda t: self._client.ping())
+                period=int(self.keepalive / 2) * 1000,
+                mode=machine.Timer.PERIODIC,
+                callback=lambda t: self._safe_mqtt_call(self._client.ping))
 
     def stop(self):
         self._check_msg_timer.deinit()
