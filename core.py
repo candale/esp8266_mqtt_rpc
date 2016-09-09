@@ -89,10 +89,12 @@ class MQTTRouter:
         self._handlers_map.append((topic, handler))
 
 
+# TODO: break this class somehow that it could run in CPython with little changes
 class MQTTRpc:
 
     # TODO: add keepalive timer
     router_class = MQTTRouter
+    mqtt_client_class = MQTTClient
     # An iterable of the form ((<topic>, <topic_handler_class>), ...)
     handler_classes = None
     name = None
@@ -107,7 +109,7 @@ class MQTTRpc:
 
     def __init__(self):
         assert self.server, 'No server'
-        self._client = MQTTClient(
+        self._client = self.mqtt_client_class(
             self.get_id(), self.server, keepalive=self.keepalive)
         self._client.set_last_will(
             self.get_last_will_topic(), self.get_last_will_message(),
