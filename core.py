@@ -103,6 +103,7 @@ class MQTTRpc:
     server = None
     port = 1883
     keepalive = 180
+    self_keepalive = False
 
     _unique_id = str(int.from_bytes(machine.unique_id()))
     _spec_topic = 'devices/{}/spec'
@@ -115,7 +116,8 @@ class MQTTRpc:
             self.get_last_will_topic(), self.get_last_will_message(),
             qos=self.last_will_qos, retain=self.last_will_retain)
         self._router = None
-        self._timer = machine.Timer(-1)
+        self._check_msg_timer = machine.Timer(-1)
+        self._keepalive_timer = machine.Timer(-1)
 
     def _init_router(self):
         if self.handler_classes is None:
@@ -171,10 +173,16 @@ class MQTTRpc:
                     '{}|{}'.format(topic.decode('utf-8'), spec))
 
         # In case of failure, kill the timer somehow
-        self._timer.init(
+        self._check_msg_timer.init(
             period=period, mode=machine.Timer.PERIODIC,
             callback=lambda t: self._client.check_msg())
 
+        if self.self_keepalive:
+            self._keepalive_timer.init(
+                period=int(self.keepalive / 2) * 1000, mode=machine.Timer.PERIODIC,
+                callback=lambda t: self._client.ping())
+
     def stop(self):
+        self._check_msg_timer.deinit()
+        self._keepalive_timer.deinit()
         self._client.disconnect()
-        self._timer.deinit()
