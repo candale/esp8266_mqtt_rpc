@@ -93,7 +93,6 @@ class MQTTRouter:
 #       changes ... maybe ... or just develop another, separate package
 class MQTTRpc:
 
-    # TODO: add keepalive timer
     router_class = MQTTRouter
     mqtt_client_class = MQTTClient
     # An iterable of the form ((<topic>, <topic_handler_class>), ...)
