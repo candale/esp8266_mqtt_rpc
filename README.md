@@ -20,4 +20,6 @@ The format is flexible, but the specification must contain this information:
     * `op_description`: description of the operation
     * `args`: a list of key-value arguments with the key being the type of the argument and the value, the name of the argument; currently the supported types are `str`, `int` and `bool`
 
-## 
+## MQTTRouter
+
+`MQTTRouter` is a class can take up pairs of topic and handler instance and can execute `process_message` of one of the operations, given a topic. The class implements the `__call__` method that takes as positional parameters a topic and a message. It looks in its registry of topic-handler pairs and tries to match the received topic to one of them. If more than zero were found, it calls the found operations passing message and the arguments found in the topic.
