@@ -105,16 +105,24 @@ class MQTTRpc:
     keepalive = 180
     self_keepalive = False
 
+    # TODO: maybe rethink how this information is get..maybe have methods or
+    #       have both methods and attributes, like queryset in drf
+    _offline_message = '-'
+    _online_message = '+'
     _unique_id = str(int.from_bytes(machine.unique_id()))
-    _spec_topic = 'devices/{}/spec'
+    base_topic = 'device/' + (name or _unique_id) + '/'
+    spec_topic = base_topic + 'spec'
+    status_topic = base_topic + 'status'
 
     def __init__(self):
         assert self.server, 'No server'
         self._client = self.mqtt_client_class(
-            self.get_id(), self.server, keepalive=self.keepalive)
+            self.get_id() or self.name or self._unique_id, self.server,
+            keepalive=self.keepalive)
         self._client.set_last_will(
-            self.get_last_will_topic(), self.get_last_will_message(),
+            self.status_topic, self._offline_message,
             qos=self.last_will_qos, retain=self.last_will_retain)
+
         self._router = None
         self._check_msg_timer = machine.Timer(-1)
         self._keepalive_timer = machine.Timer(-1)
@@ -145,16 +153,6 @@ class MQTTRpc:
         '''
         The return value of this method is used as the id of the device
         '''
-        if self.name is not None:
-            return str(self.name) + '_' + self._unique_id
-        else:
-            return self._unique_id
-
-    def get_last_will_topic(self):
-        return 'devices/' + self.get_id() + '/offline'
-
-    def get_last_will_message(self):
-        return 'offline'
 
     def _safe_mqtt_call(self, callback):
         '''
@@ -168,7 +166,7 @@ class MQTTRpc:
         except OSError:
             for i in range(2):
                 try:
-                    self._client.connect(False)
+                    self._connect(False)
                     print('mqtt connection back')
                     callback()
                     return
@@ -176,21 +174,30 @@ class MQTTRpc:
                     pass
         print('mqtt lost connection')
 
+    def _connect(self, new_session=True):
+        self._client.connect(new_session)
+        self._client.publish(self.status_topic, self._online_message)
+
+    def _disconnect(self):
+        self._client.publish(self.status_topic, self._offline_message)
+        self._client.disconnect()
+
     def start(self, period=500):
         if self.router_class is None:
             raise ValueError('Improperly configured: no router configured')
 
-        self._client.connect()
+        self._connect()
 
         if self._router is None:
             handlers_info = self._init_router()
             self._client.set_callback(self._router)
 
             for topic, spec in handlers_info:
-                self._client.subscribe(topic)
+                prefixed_topic = self.base_topic.encode() + topic
+                self._client.subscribe(prefixed_topic)
                 self._client.publish(
-                    self._spec_topic.format(self.get_id()),
-                    '{}|{}'.format(topic.decode('utf-8'), spec))
+                    self.spec_topic,
+                    '{}|{}'.format(prefixed_topic.decode('utf-8'), spec))
 
         self._check_msg_timer.init(
             period=period, mode=machine.Timer.PERIODIC,
@@ -205,4 +212,4 @@ class MQTTRpc:
     def stop(self):
         self._check_msg_timer.deinit()
         self._keepalive_timer.deinit()
-        self._client.disconnect()
+        self._disconnect()
