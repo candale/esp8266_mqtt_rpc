@@ -144,8 +144,11 @@ class MQTTRpc:
                     'Improperly configured: handler %s does not have spec'
                     % handler_cls.__name__)
 
-            self._router.register_handler(topic, handler_cls(self._client))
-            handlers_info.append((topic, spec))
+            # TODO: refactor this as it is used in multiple places
+            prefixed_topic = self.base_topic.encode() + topic
+
+            self._router.register_handler(prefixed_topic, handler_cls(self._client))
+            handlers_info.append((prefixed_topic, spec))
 
         return handlers_info
 
@@ -193,11 +196,10 @@ class MQTTRpc:
             self._client.set_callback(self._router)
 
             for topic, spec in handlers_info:
-                prefixed_topic = self.base_topic.encode() + topic
-                self._client.subscribe(prefixed_topic)
+                self._client.subscribe(topic)
                 self._client.publish(
                     self.spec_topic,
-                    '{}|{}'.format(prefixed_topic.decode('utf-8'), spec))
+                    '{}|{}'.format(topic.decode('utf-8'), spec))
 
         self._check_msg_timer.init(
             period=period, mode=machine.Timer.PERIODIC,
