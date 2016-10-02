@@ -22,4 +22,27 @@ The format is flexible, but the specification must contain this information:
 
 ## MQTTRouter
 
-`MQTTRouter` is a class can take up pairs of topic and handler instance and can execute `process_message` of one of the operations, given a topic. The class implements the `__call__` method that takes as positional parameters a topic and a message. It looks in its registry of topic-handler pairs and tries to match the received topic to one of them. If more than zero were found, it calls the found operations passing message and the arguments found in the topic.
+`MQTTRouter` is a class can take up pairs of topic and handler instance and executes `process_message` of one of the operations, given a topic. The class implements the `__call__` method that takes as positional parameters a topic and a message. It looks in its registry of topic-handler pairs and tries to match the received topic to one of them. If more than zero were found, it calls the found operations passing message and the arguments found in the topic.
+
+
+## MQTTRpc
+
+`MQTTRpc` is the class that brings it all together. The user is responsible with inheriting and configuring the this class.
+
+# Attributes:
+    * `router_class`: the router class; default `MQTTRouter`
+    * `mqtt_client_class`: the class to be used as MQTT client; default `umqtt.simple.MQTTClient`
+    * `handler_class`: an iterable with topic-handler class tuples
+    * `name`: the unique name of the client; if name is not specified, the device id will be `machine.unique_id()`
+    * `last_will_retain`: retain flag for last will for the MQTT client; default `False`
+    * `last_will_qos`: quality of service for last will; default 0
+    * `server`: MQTT server host
+    * `port`: QMTT server port; default 1883
+    * `keepalive`: MQTT keepalive; default 180 seconds
+    * `self_keepalive`: whether or not to let MQTTRpc instance ping the MQTT server in order to keep the connection alive; the default behavior is to ping the server on interval of `keepalive` / 2
+
+
+# Methods:
+    * `get_id()` - Get the unique id of the device.
+    * `start()` - Start processing messages
+    * `stop()` - Disconnect from server.
