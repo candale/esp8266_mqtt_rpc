@@ -196,7 +196,7 @@ class MQTTRpc:
             period=period, mode=machine.Timer.PERIODIC,
             callback=lambda t: self._safe_mqtt_call(self._client.check_msg))
 
-        if self.self_keepalive:
+        if self.keepalive and self.self_keepalive:
             self._keepalive_timer.init(
                 period=int(self.keepalive / 2) * 1000,
                 mode=machine.Timer.PERIODIC,
