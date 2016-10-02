@@ -1,4 +1,4 @@
-### ESP8266 Micropython MQTTRpc
+# ESP8266 Micropython MQTTRpc
 
 Classes: `MessageHandlerBase`, `MQTTRouter` and `MQTTRpc`.
 
@@ -30,7 +30,7 @@ The format is flexible, but the specification must contain this information:
 
 `MQTTRpc` is the class that brings it all together. The user is responsible with inheriting and configuring the this class.
 
-# Attributes:
+### Attributes:
 
 - `router_class`: the router class; default `MQTTRouter`
 - `mqtt_client_class`: the class to be used as MQTT client; default `umqtt.simple.MQTTClient`
@@ -44,7 +44,7 @@ The format is flexible, but the specification must contain this information:
 - `self_keepalive`: whether or not to let MQTTRpc instance ping the MQTT server in order to keep the connection alive; the default behavior is to ping the server on interval of `keepalive` / 2
 
 
-# Methods:
+### Methods:
 
 + `get_id()` - Get the unique id of the device.
 + `start()` - Start processing messages
