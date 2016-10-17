@@ -1,4 +1,5 @@
 import ure
+import ubinascii
 import machine
 from ucollections import namedtuple
 
@@ -107,25 +108,32 @@ class MQTTRpc:
 
     # TODO: maybe rethink how this information is get..maybe have methods or
     #       have both methods and attributes, like queryset in drf
-    _offline_message = '-'
-    _online_message = '+'
-    _unique_id = str(int.from_bytes(machine.unique_id()))
-    base_topic = 'device/' + (name or _unique_id) + '/'
-    spec_topic = base_topic + 'spec'
-    status_topic = base_topic + 'status'
+    offline_message = '-'
+    online_message = '+'
+    _unique_id = str(int.from_bytes(ubinascii.hexlify(machine.unique_id())))
 
     def __init__(self):
+        self._router = None
+
+        self.base_topic = (
+            self.get_base_topic() or
+            'device/' + (self.get_id() or self.name or self._unique_id) + '/')
+        self.spec_topic = self.base_topic + 'spec'
+        self.status_topic = self.base_topic + 'status'
+
+        self._check_msg_timer = machine.Timer(-1)
+        self._keepalive_timer = machine.Timer(-1)
+
+        self._make_client()
+
+    def _make_client(self):
         assert self.server, 'No server'
         self._client = self.mqtt_client_class(
             self.get_id() or self.name or self._unique_id, self.server,
             keepalive=self.keepalive)
         self._client.set_last_will(
-            self.status_topic, self._offline_message,
+            self.status_topic, self.offline_message,
             qos=self.last_will_qos, retain=self.last_will_retain)
-
-        self._router = None
-        self._check_msg_timer = machine.Timer(-1)
-        self._keepalive_timer = machine.Timer(-1)
 
     def _init_router(self):
         if self.handler_classes is None:
@@ -152,11 +160,6 @@ class MQTTRpc:
 
         return handlers_info
 
-    def get_id(self):
-        '''
-        The return value of this method is used as the id of the device
-        '''
-
     def _safe_mqtt_call(self, callback):
         '''
         Robust version for calling mqtt methods. In case of connection error,
@@ -179,10 +182,10 @@ class MQTTRpc:
 
     def _connect(self, new_session=True):
         self._client.connect(new_session)
-        self._client.publish(self.status_topic, self._online_message)
+        self._client.publish(self.status_topic, self.online_message)
 
     def _disconnect(self):
-        self._client.publish(self.status_topic, self._offline_message)
+        self._client.publish(self.status_topic, self.offline_message)
         self._client.disconnect()
 
     def start(self, period=500):
@@ -215,3 +218,14 @@ class MQTTRpc:
         self._check_msg_timer.deinit()
         self._keepalive_timer.deinit()
         self._disconnect()
+
+    def get_id(self):
+        '''
+        The return value of this method is used as the id of the device
+        '''
+
+    def get_base_topic(self):
+        '''
+        The return value of this method will be used as a prefix for all
+        topics in the application
+        '''
