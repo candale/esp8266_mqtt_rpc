@@ -120,6 +120,7 @@ class MQTTRpc:
             'device/' + (self.get_id() or self.name or self._unique_id) + '/')
         self.spec_topic = self.base_topic + 'spec'
         self.status_topic = self.base_topic + 'status'
+        self.ack_topic = self.base_topic + 'ack'
 
         self._check_msg_timer = machine.Timer(-1)
         self._keepalive_timer = machine.Timer(-1)
@@ -188,6 +189,10 @@ class MQTTRpc:
         self._client.publish(self.status_topic, self.offline_message)
         self._client.disconnect()
 
+    def _on_msg(self, topic, msg):
+        self._router(topic, msg)
+        self._client.publish(self.ack_topic, '+')
+
     def start(self, period=500):
         if self.router_class is None:
             raise ValueError('Improperly configured: no router configured')
@@ -196,7 +201,7 @@ class MQTTRpc:
 
         if self._router is None:
             handlers_info = self._init_router()
-            self._client.set_callback(self._router)
+            self._client.set_callback(self._on_msg)
 
             for topic, spec in handlers_info:
                 self._client.subscribe(topic)
