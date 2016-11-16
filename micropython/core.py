@@ -109,7 +109,6 @@ class MQTTRpc:
     username = None
     password = None
 
-
     # TODO: maybe rethink how this information is get..maybe have methods or
     #       have both methods and attributes, like queryset in drf
     offline_message = '-'
