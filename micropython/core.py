@@ -106,6 +106,10 @@ class MQTTRpc:
     keepalive = 180
     self_keepalive = False
 
+    username = None
+    password = None
+
+
     # TODO: maybe rethink how this information is get..maybe have methods or
     #       have both methods and attributes, like queryset in drf
     offline_message = '-'
@@ -131,7 +135,8 @@ class MQTTRpc:
         assert self.server, 'No server'
         self._client = self.mqtt_client_class(
             self.get_id() or self.name or self._unique_id, self.server,
-            keepalive=self.keepalive)
+            keepalive=self.keepalive, user=self.username,
+            password=self.password)
         self._client.set_last_will(
             self.status_topic, self.offline_message,
             qos=self.last_will_qos, retain=self.last_will_retain)
