@@ -56,23 +56,32 @@ endef
 .PHONY : all clean cleanall $(BIN_TARGET) getips help serterm
 uniq = $(if $1,$(firstword $1) $(call uniq,$(filter-out $(firstword $1),$1)))
 
-FW_FILE1 = image.elf-0x00000.bin
-FW_FILE2 = image.elf-0x10000.bin
-TARGET = image.elf
 
+# PROPRIETARY CODE
+FW_FILE1 	= image.elf-0x00000.bin
+FW_FILE2 	= image.elf-0x10000.bin
+TARGET 		= image.elf
+
+THIRD_PARTY_MODULES_DIR = lib
 
 SRCS =  user/user_main.c \
+		user/utils.c \
 		modules/wifi.c
 
-LIBS = main lwip ssl upgrade net80211 wpa phy lwip pp crypto
-INCL = $(SDK)/include modules/include include .
+INCL = $(SDK)/include modules/include include
 
-CFLAGS = -mlongcalls -Os $(addprefix -I,$(INCL) $(call uniq, $(patsubst %/,%,$(dir $(SRCS))))) $(OPTS) -DVERSSTR='$(VERSSTR)'
 
-LDFLAGS_CORE = -Wl,--relax -Wl,--gc-sections -nostdlib -L$(XTLIB) \
-	-L$(XTGCCLIB) $(addprefix $(SDK)/lib/lib,$(addsuffix .a,$(LIBS))) \
-	$(XTGCCLIB) $(XCLIB) -T $(SDK)/ld/eagle.app.v6.ld
-#	-flto -Wl,--relax -Wl,--gc-sections
+# THIRD PARTY CODE
+THIRD_PARTY_MODULES = lib/esp_mqtt/mqtt
+SRCS 				+= $(foreach sdir,$(THIRD_PARTY_MODULES),$(wildcard $(sdir)/*.c))
+
+MODULE_INCDIR 	:= $(addsuffix /include,$(THIRD_PARTY_MODULES))
+INCL 			+= $(MODULE_INCDIR)
+
+
+# COMPILE FLAGS
+CFLAGS = -mlongcalls -Os -ffunction-sections $(addprefix -I,$(INCL) $(call uniq, $(patsubst %/,%,$(dir $(SRCS))))) $(OPTS) -DVERSSTR='$(VERSSTR)'
+LDFLAGS_CORE = -nostdlib -Wl,--start-group -lmain -lnet80211 -lcrypto -lssl -lwpa -llwip -lpp -lphy -Wl,--end-group -lgcc $(XCLIB) -T $(SDK)/ld/eagle.app.v6.ld
 
 LINKFLAGS = $(LDFLAGS_CORE) -B$(XTLIB)
 
@@ -104,7 +113,6 @@ debug : $(TARGET)
 
 
 burn : $(FW_FILE1) $(FW_FILE2)
-	$(info NOTICE: Currently burning for ESP8266.  If you are on an 85 reconfigure CHIP.)
 	($(ESPTOOL_PY) $(FWBURNFLAGS) --port $(PORT) write_flash --flash_mode dio $(FLASH_WRITE_FLAGS) 0x00000 $(FW_FILE1) 0x10000 $(FW_FILE2))||(true)
 
 getips:
