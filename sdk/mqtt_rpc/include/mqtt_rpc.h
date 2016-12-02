@@ -1,0 +1,58 @@
+#ifndef __MQTT_RPC_H_
+#define __MQTT_RPC_H_
+
+#include "mqtt.h"
+#include "mem.h"
+#include "osapi.h"
+
+
+#define MQTT_RPC_DEBUG_ON
+
+#define BASE_TOPIC "devices"
+#define STATUS_TOPIC "status"
+#define SPEC_TOPIC "spec"
+#define ACK_TOPIC "ack"
+
+#define MQTTRPC_INIT_CONF(...) { \
+    .handlers = 0, \
+    .offline_message = "-", \
+    .online_message = "+", \
+    .last_will_retain = 0, \
+    .last_will_qos = 0, \
+    ## __VA_ARGS__ }
+
+typedef struct _mqttrpc_conf MQTTRPC_Conf;
+typedef struct _mqttrpc_topic_map MQTTRPC_Topic_Map;
+typedef int (*MQTTRPC_Handler)(MQTTRPC_Conf* mqtt_rpc, char* data, void* args);
+
+struct _mqttrpc_conf {
+    const MQTTRPC_Topic_Map* handlers;
+    const char* offline_message;
+    const char* online_message;
+    const char* base_topic;
+    const char* status_topic;
+    const char* spec_topic;
+    const char* ack_topic;
+    const uint8_t last_will_retain;
+    const uint8_t last_will_qos;
+    void* user_data;
+};
+
+struct _mqttrpc_topic_map {
+    MQTTRPC_Handler handler;
+    char* topic;
+    uint8_t qos;
+};
+
+
+void ICACHE_FLASH_ATTR
+MQTTRPC_Init(MQTTRPC_Conf* rpc_conf, MQTT_Client* mqtt_client);
+
+
+#if defined(MQTT_RPC_DEBUG_ON)
+#define RPC_INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
+#else
+#define RPC_INFO( format, ... )
+#endif
+
+#endif

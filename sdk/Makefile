@@ -66,9 +66,10 @@ THIRD_PARTY_MODULES_DIR = lib
 
 SRCS =  user/user_main.c \
 		user/utils.c \
-		modules/wifi.c
+		modules/wifi.c \
+		mqtt_rpc/mqtt_rpc.c
 
-INCL = $(SDK)/include modules/include include
+INCL = $(SDK)/include modules/include include mqtt_rpc/include
 
 
 # THIRD PARTY CODE
