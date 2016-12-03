@@ -7,9 +7,19 @@
 #include "mqtt.h"
 #include "mem.h"
 #include "mqtt_rpc.h"
+#include "user_interface.h"
 
 
 MQTT_Client mqttClient;
+
+void ICACHE_FLASH_ATTR print_info()
+{
+  INFO("\r\n\r\n[INFO] BOOTUP...\r\n");
+  INFO("[INFO] SDK: %s\r\n", system_get_sdk_version());
+  INFO("[INFO] Chip ID: %08X\r\n", system_get_chip_id());
+  INFO("[INFO] Memory info:\r\n");
+  system_print_meminfo();
+}
 
 
 int ICACHE_FLASH_ATTR
@@ -20,7 +30,9 @@ simple_handler(MQTTRPC_Conf* rpc_conf, char* data, char* args[], uint8_t arg_cou
     for(i = 0; i < arg_count; i++) {
         INFO("ARG %s\n", args[i]);
     }
+    INFO("Available heap %d\n", system_get_free_heap_size());
 }
+
 
 
 const MQTTRPC_Topic_Map topics_map[] = {
@@ -33,15 +45,6 @@ const MQTTRPC_Topic_Map topics_map[] = {
     };
 MQTTRPC_Conf rpc_conf = MQTTRPC_INIT_CONF( .handlers = topics_map);
 
-
-void ICACHE_FLASH_ATTR print_info()
-{
-  INFO("\r\n\r\n[INFO] BOOTUP...\r\n");
-  INFO("[INFO] SDK: %s\r\n", system_get_sdk_version());
-  INFO("[INFO] Chip ID: %08X\r\n", system_get_chip_id());
-  INFO("[INFO] Memory info:\r\n");
-  system_print_meminfo();
-}
 
 
 void ICACHE_FLASH_ATTR
