@@ -13,14 +13,22 @@ MQTT_Client mqttClient;
 
 
 int ICACHE_FLASH_ATTR
-simple_handler(MQTTRPC_Conf* rpc_conf, char* data, void* args) {
-    INFO("IN handler");
-    os_printf("%s", data);
+simple_handler(MQTTRPC_Conf* rpc_conf, char* data, char* args[], uint8_t arg_count)
+{
+    INFO("IN handler simple_handler with data %s\n", data);
+    int i = 0;
+    for(i = 0; i < arg_count; i++) {
+        INFO("ARG %s\n", args[i]);
+    }
 }
 
 
 const MQTTRPC_Topic_Map topics_map[] = {
         { .topic = "/my/cool/topic", .handler = simple_handler, .qos = 0},
+        { .topic = "/my/+/topic", .handler = simple_handler, .qos = 0},
+        { .topic = "/my/cool/+", .handler = simple_handler, .qos = 0},
+        { .topic = "/+/cool/topic", .handler = simple_handler, .qos = 0},
+        { .topic = "+/cool/topic", .handler = simple_handler, .qos = 0},
         { .topic = 0 }
     };
 MQTTRPC_Conf rpc_conf = MQTTRPC_INIT_CONF( .handlers = topics_map);
