@@ -24,6 +24,7 @@
     .last_will_qos = 0, \
     .online_qos = 0, \
     .online_retain = 0, \
+    .break_on_first = 0, \
     ## __VA_ARGS__ }
 
 typedef struct _mqttrpc_conf MQTTRPC_Conf;
@@ -31,6 +32,7 @@ typedef struct _mqttrpc_topic_map MQTTRPC_Topic_Map;
 typedef int (*MQTTRPC_Handler)(MQTTRPC_Conf* mqtt_rpc, char* data, char* args[], uint8_t arg_count);
 
 struct _mqttrpc_conf {
+    MQTT_Client* _mqtt_client;
     const MQTTRPC_Topic_Map* handlers;
     const char* offline_message;
     const char* online_message;
@@ -42,6 +44,7 @@ struct _mqttrpc_conf {
     const uint8_t online_retain;
     const uint8_t last_will_retain;
     const uint8_t last_will_qos;
+    const uint8_t break_on_first;
     void* user_data;
 };
 
@@ -54,6 +57,11 @@ struct _mqttrpc_topic_map {
 
 void ICACHE_FLASH_ATTR
 MQTTRPC_Init(MQTTRPC_Conf* rpc_conf, MQTT_Client* mqtt_client);
+
+uint8_t ICACHE_FLASH_ATTR
+MQTTRPC_Publish(
+    MQTTRPC_Conf* config, const char* topic, const char* data,
+    int data_len, int qos, int retain);
 
 
 #if defined(MQTT_RPC_DEBUG_ON)

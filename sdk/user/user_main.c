@@ -12,6 +12,7 @@
 
 MQTT_Client mqttClient;
 
+
 void ICACHE_FLASH_ATTR print_info()
 {
   INFO("\r\n\r\n[INFO] BOOTUP...\r\n");
@@ -31,16 +32,20 @@ simple_handler(MQTTRPC_Conf* rpc_conf, char* data, char* args[], uint8_t arg_cou
         INFO("ARG %s\n", args[i]);
     }
     INFO("Available heap %d\n", system_get_free_heap_size());
+
+    // TODO: I get Fatal exception 28 if I leave the line below. Check it out
+    // MQTTRPC_Publish(rpc_conf, "", "this data", 9, 0, 0);
 }
 
-
+int ICACHE_FLASH_ATTR
+all_handler(MQTTRPC_Conf* rpc_conf, char* data, char* args[], uint8_t arg_count)
+{
+    INFO("IN handler all_handler with data %s\n", data);
+}
 
 const MQTTRPC_Topic_Map topics_map[] = {
-        { .topic = "/my/cool/topic", .handler = simple_handler, .qos = 0},
-        { .topic = "/my/+/topic", .handler = simple_handler, .qos = 0},
-        { .topic = "/my/cool/+", .handler = simple_handler, .qos = 0},
-        { .topic = "/+/cool/topic", .handler = simple_handler, .qos = 0},
-        { .topic = "+/cool/topic", .handler = simple_handler, .qos = 0},
+        { .topic = "", .handler = all_handler},
+        { .topic = "my/+/topic", .handler = simple_handler, .qos = 0},
         { .topic = 0 }
     };
 MQTTRPC_Conf rpc_conf = MQTTRPC_INIT_CONF( .handlers = topics_map);

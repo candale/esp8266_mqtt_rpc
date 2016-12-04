@@ -4,6 +4,9 @@
 static void ICACHE_FLASH_ATTR
 mqtt_connected_cb(uint32_t *args)
 {
+    /*
+    If a handler has an empty handler, it will be called on topic `<base_topic>/`
+    */
     RPC_INFO("MQTTRPC: MQTT client connected\r\n");
 
     MQTT_Client* mqtt_client = (MQTT_Client*)args;
@@ -12,7 +15,17 @@ mqtt_connected_cb(uint32_t *args)
 
     // Subscribe for all handlers
     while(handlers->topic != 0) {
-        MQTT_Subscribe(mqtt_client, handlers->topic, handlers->qos);
+        char* sub_topic = (char*)os_zalloc(
+            os_strlen(rpc_conf->base_topic) + os_strlen(handlers->topic) + 2);
+        os_strcpy(sub_topic, rpc_conf->base_topic);
+        os_strcat(sub_topic, "/");
+        os_strcat(sub_topic, handlers->topic);
+
+        MQTT_Subscribe(mqtt_client, sub_topic, handlers->qos);
+
+        // TODO: don't reallocate memory each time, recycle
+        os_free(sub_topic);
+
         handlers++;
     }
 
@@ -44,6 +57,7 @@ mqtt_published_cb(uint32_t *args)
 
 uint8_t number_of_occurrs(char* str, char to_find)
 {
+    // TODO: apply same logic as for is_true_wildcard for +
     uint8_t count = 0;
     int i;
     for(i = 0; i < os_strlen(str); i++) {
@@ -68,6 +82,12 @@ uint8_t chars_until(char* str, char stop_char)
 
 uint8_t match_topic(char* template, char* source, char* args[])
 {
+    // TODO: optimize for topics that do not have args
+    // Treat some simple cases first
+    if(os_strlen(template) == os_strlen(source) && os_strlen(source) == 0) {
+        return 1;
+    }
+
     if(number_of_occurrs(template, '/') != number_of_occurrs(source, '/')) {
         return 0;
     }
@@ -85,8 +105,7 @@ uint8_t match_topic(char* template, char* source, char* args[])
         );
         if(template[tmpl_i] == '+' && is_true_wildcard) {
             int param_len = chars_until(source + src_i, '/');
-            char* param = (char*)os_malloc(param_len + 1);
-            os_memset(param, 0, param_len + 1);
+            char* param = (char*)os_zalloc(param_len + 1);
             os_strncpy(param, source + src_i, param_len);
             args[args_count++] = param;
 
@@ -113,7 +132,10 @@ static void ICACHE_FLASH_ATTR
 mqtt_data_cb(uint32_t *args, const char* topic, uint32_t topic_len,
              const char *data, uint32_t data_len)
 {
+    // TODO: add support for # wildcard
     RPC_INFO("MQTTRPC: MQTT client got data\r\n");
+
+    int i;
     char* topic_buf = (char*)os_zalloc(topic_len + 1);
     char* data_buf = (char*)os_zalloc(data_len + 1);
 
@@ -126,22 +148,44 @@ mqtt_data_cb(uint32_t *args, const char* topic, uint32_t topic_len,
     os_memcpy(data_buf, data, data_len);
     data_buf[topic_len] = 0;
 
-    RPC_INFO("Received on topic: %s with data %s\r\n", topic_buf, data_buf);
+    RPC_INFO("MQTTRPC: Received on topic: %s with data %s\r\n", topic_buf, data_buf);
 
-    while(topic_map->topic != 0) {
+    // If the topic is shorter than our base topic, no reason to go further
+    uint8_t should_try_to_match = 1;
+    char* to_match;
+    if(os_strlen(topic_buf) < os_strlen(rpc_conf->base_topic)) {
+        should_try_to_match = 0;
+        RPC_INFO("MQTTRPC: Received topic shorter than base\r\n");
+    } else {
+        // Try to match only the part after base_topic, without any trailing /
+        to_match = topic_buf + os_strlen(rpc_conf->base_topic);
+        if(os_strlen(to_match) != 0 && to_match[0] == '/') {
+            to_match ++;
+        }
+        RPC_INFO("MQTTRPC: Topic to match: '%s'\r\n", to_match);
+    }
+
+    while(topic_map->topic != 0 && should_try_to_match) {
+        // Number of arguments based on number of + where used as wildcard
         uint8_t no_args = number_of_occurrs(topic_map->topic, '+');
         char* args[no_args];
 
-        uint8_t is_matched = match_topic(topic_map->topic, topic_buf, args);
+        uint8_t is_matched = match_topic(topic_map->topic, to_match, args);
 
         if(is_matched) {
-            RPC_INFO("Matched handler with topic %s\r\n", topic_map->topic);
+            RPC_INFO("MQTTRPC: Matched handler with topic %s\r\n", topic_map->topic);
 
             topic_map->handler(rpc_conf, data_buf, args, no_args);
+
+            if(rpc_conf->break_on_first) {
+                // TODO: do not repeat this loop here and below
+                for(i = 0; i < no_args; i++) {
+                    os_free(args[i]);
+                }
+                break;
+            }
         }
 
-        RPC_INFO("Freeing data\r\n");
-        int i;
         for(i = 0; i < no_args; i++) {
             os_free(args[i]);
         }
@@ -159,28 +203,24 @@ MQTTRpc_Init(MQTTRPC_Conf* rpc_conf, MQTT_Client* mqtt_client) {
     // Build topics
     int base_topic_len = os_strlen(BASE_TOPIC) + os_strlen(mqtt_client->connect_info.client_id) + 2;
     char* base_topic = (char*)os_zalloc(base_topic_len);
-    os_memset(base_topic, 0, base_topic_len);
     os_strcpy(base_topic, BASE_TOPIC);
     os_strcat(base_topic, "/");
     os_strcat(base_topic, mqtt_client->connect_info.client_id);
 
     int status_topic_len = base_topic_len + os_strlen(STATUS_TOPIC) + 2;
     char* status_topic = (char*)os_zalloc(status_topic_len);
-    os_memset(status_topic, 0, status_topic_len);
     os_strcpy(status_topic, base_topic);
     os_strcat(status_topic, "/");
     os_strcat(status_topic, STATUS_TOPIC);
 
     int ack_topic_len = base_topic_len + os_strlen(ACK_TOPIC) + 2;
     char* ack_topic = (char*)os_zalloc(ack_topic_len);
-    os_memset(ack_topic, 0, ack_topic_len);
     os_strcpy(ack_topic, base_topic);
     os_strcat(ack_topic, "/");
     os_strcat(ack_topic, ACK_TOPIC);
 
     int spec_topic_len = base_topic_len + os_strlen(SPEC_TOPIC) + 2;
     char* spec_topic = (char*)os_zalloc(spec_topic_len);
-    os_memset(spec_topic, 0, spec_topic_len);
     os_strcpy(spec_topic, base_topic);
     os_strcat(spec_topic, "/");
     os_strcat(spec_topic, SPEC_TOPIC);
@@ -189,7 +229,9 @@ MQTTRpc_Init(MQTTRPC_Conf* rpc_conf, MQTT_Client* mqtt_client) {
     rpc_conf->status_topic = status_topic;
     rpc_conf->ack_topic = ack_topic;
     rpc_conf->spec_topic = spec_topic;
+
     mqtt_client->user_data = (void*)rpc_conf;
+    rpc_conf->_mqtt_client = mqtt_client;
 
     // Initialize MQTT client
     MQTT_OnConnected(mqtt_client, mqtt_connected_cb);
@@ -202,4 +244,23 @@ MQTTRpc_Init(MQTTRPC_Conf* rpc_conf, MQTT_Client* mqtt_client) {
         rpc_conf->last_will_qos, rpc_conf->last_will_retain);
 
     MQTT_Connect(mqtt_client);
+}
+
+
+uint8_t ICACHE_FLASH_ATTR
+MQTTRPC_Publish(MQTTRPC_Conf* config, const char* topic, const char* data,
+                int data_len, int qos, int retain)
+{
+    char* pub_topic = (char*)os_zalloc(
+        os_strlen(config->base_topic) + os_strlen(topic) + 2);
+    os_strcpy(pub_topic, config->base_topic);
+    os_strcat(pub_topic, "/");
+    os_strcat(pub_topic, topic);
+
+    uint8_t result = MQTT_Publish(
+        config->_mqtt_client, pub_topic, data, data_len + os_strlen(topic), qos, retain);
+
+    os_free(pub_topic);
+
+    return result;
 }
