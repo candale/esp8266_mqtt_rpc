@@ -32,9 +32,7 @@ simple_handler(MQTTRPC_Conf* rpc_conf, char* data, char* args[], uint8_t arg_cou
         INFO("ARG %s\n", args[i]);
     }
     INFO("Available heap %d\n", system_get_free_heap_size());
-
-    // TODO: I get Fatal exception 28 if I leave the line below. Check it out
-    // MQTTRPC_Publish(rpc_conf, "", "this data", 9, 0, 0);
+    MQTTRPC_Publish(rpc_conf, "other", "this data", 9, 0, 0);
 }
 
 int ICACHE_FLASH_ATTR
@@ -43,8 +41,15 @@ all_handler(MQTTRPC_Conf* rpc_conf, char* data, char* args[], uint8_t arg_count)
     INFO("IN handler all_handler with data %s\n", data);
 }
 
+int ICACHE_FLASH_ATTR
+other_handler(MQTTRPC_Conf* rpc_conf, char* data, char* args[], uint8_t arg_count)
+{
+    INFO("IN handler other_handler with data %s\n", data);
+}
+
 const MQTTRPC_Topic_Map topics_map[] = {
         { .topic = "", .handler = all_handler},
+        { .topic = "other", .handler = other_handler},
         { .topic = "my/+/topic", .handler = simple_handler, .qos = 0},
         { .topic = 0 }
     };

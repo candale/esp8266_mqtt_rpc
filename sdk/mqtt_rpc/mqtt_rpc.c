@@ -5,7 +5,7 @@ static void ICACHE_FLASH_ATTR
 mqtt_connected_cb(uint32_t *args)
 {
     /*
-    If a handler has an empty handler, it will be called on topic `<base_topic>/`
+    If a handler has an empty topic, it will be called on topic `<base_topic>/`
     */
     RPC_INFO("MQTTRPC: MQTT client connected\r\n");
 
@@ -92,8 +92,9 @@ uint8_t match_topic(char* template, char* source, char* args[])
         return 0;
     }
 
+    uint8_t matched = 1;
     char prev_tmpl_char = 0, args_count = 0;
-    int tmpl_i = 0, src_i = 0;
+    int tmpl_i = 0, src_i = 0, i;
     int tmpl_len = os_strlen(template);
     int src_len = os_strlen(source);
 
@@ -111,7 +112,7 @@ uint8_t match_topic(char* template, char* source, char* args[])
 
             src_i += param_len - 1;
         } else if(template[tmpl_i] != source[src_i]) {
-            return 0;
+            matched = 0;
         }
 
         prev_tmpl_char = template[tmpl_i];
@@ -121,10 +122,16 @@ uint8_t match_topic(char* template, char* source, char* args[])
     } while(tmpl_i < tmpl_len && src_i < src_len);
 
     if(tmpl_i != tmpl_len || src_i != src_len) {
-        return 0;
+        matched = 0;
     }
 
-    return 1;
+    if(matched == 0) {
+        for(i = 0; i < args_count; i++) {
+            os_free(args[i]);
+        }
+    }
+
+    return matched;
 }
 
 
@@ -177,24 +184,27 @@ mqtt_data_cb(uint32_t *args, const char* topic, uint32_t topic_len,
 
             topic_map->handler(rpc_conf, data_buf, args, no_args);
 
+            INFO("Number args: %u\n", no_args);
+            for(i = 0; i < no_args; i++) {
+                RPC_INFO("args free\n");
+                os_free(args[i]);
+                RPC_INFO("args free __\n");
+            }
+
             if(rpc_conf->break_on_first) {
-                // TODO: do not repeat this loop here and below
-                for(i = 0; i < no_args; i++) {
-                    os_free(args[i]);
-                }
                 break;
             }
-        }
-
-        for(i = 0; i < no_args; i++) {
-            os_free(args[i]);
         }
 
         topic_map++;
     }
 
+    RPC_INFO("topic_buf\n");
     os_free(topic_buf);
+    RPC_INFO("topic_buf __\n");
+    RPC_INFO("data_buf\n");
     os_free(data_buf);
+    RPC_INFO("data_buf__\n");
 }
 
 
