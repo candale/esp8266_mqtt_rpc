@@ -1,0 +1,3 @@
+[submodule "lib/esp_mqtt"]
+	path = lib/esp_mqtt
+	url = https://github.com/tuanpmt/esp_mqtt
