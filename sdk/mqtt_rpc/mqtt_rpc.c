@@ -184,11 +184,8 @@ mqtt_data_cb(uint32_t *args, const char* topic, uint32_t topic_len,
 
             topic_map->handler(rpc_conf, data_buf, args, no_args);
 
-            INFO("Number args: %u\n", no_args);
             for(i = 0; i < no_args; i++) {
-                RPC_INFO("args free\n");
                 os_free(args[i]);
-                RPC_INFO("args free __\n");
             }
 
             if(rpc_conf->break_on_first) {
@@ -199,12 +196,8 @@ mqtt_data_cb(uint32_t *args, const char* topic, uint32_t topic_len,
         topic_map++;
     }
 
-    RPC_INFO("topic_buf\n");
     os_free(topic_buf);
-    RPC_INFO("topic_buf __\n");
-    RPC_INFO("data_buf\n");
     os_free(data_buf);
-    RPC_INFO("data_buf__\n");
 }
 
 
