@@ -1,7 +1,6 @@
 #include "MQTTClient.h"
 
 
-
 MQTTClient::MQTTClient(const char* device_id, const char* host, const char* user, const char* pass, uint32_t port, uint32_t keep_alive)
 {
     MQTT_InitConnection(&mqttClient, (uint8_t*)host, port, 0);
