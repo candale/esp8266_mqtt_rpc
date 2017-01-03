@@ -9,6 +9,8 @@
 #include <stdarg.h>
 #include <string.h>
 
+typedef bool BOOL;
+
 extern "C" {
     #include <mqtt.h>
 }
