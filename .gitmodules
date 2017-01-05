@@ -1,3 +1,0 @@
-[submodule "arduino/lib/esp_mqtt"]
-	path = arduino/lib/esp_mqtt
-	url = https://github.com/tuanpmt/esp_mqtt

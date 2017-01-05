@@ -1,6 +1,11 @@
 #include <MQTTClient.h>
 
 
+extern "C" {
+    #include <mqtt.h>
+}
+
+
 class MyMqttClient: MQTTClient {
 public:
     MyMqttClient(
