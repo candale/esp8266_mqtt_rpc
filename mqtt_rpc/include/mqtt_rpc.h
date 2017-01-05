@@ -20,7 +20,7 @@
     .handlers = 0, \
     .offline_message = "-", \
     .online_message = "+", \
-    .last_will_retain = 0, \
+    .last_will_retain = 1, \
     .last_will_qos = 0, \
     .online_qos = 0, \
     .online_retain = 0, \
