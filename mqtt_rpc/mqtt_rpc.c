@@ -98,13 +98,24 @@ uint8_t match_topic(char* template, char* source, char* args[])
     int tmpl_len = os_strlen(template);
     int src_len = os_strlen(source);
 
+
+    // Go through both topics one char after the other and compare them
     do {
+        // Consider + a wildcard only if it is one of the following cases
+        // '/+', '/+/', '+/'
         uint8_t is_true_wildcard = (
+            // make sure it's the beginning of the string or the last char was '/'
             (prev_tmpl_char == 0 || prev_tmpl_char == '/') &&
-            (tmpl_i + 1 < tmpl_len  && template[tmpl_i + 1] == '/') ||
-            tmpl_i == tmpl_len - 1
+            (
+                // it's not the end of the string and the next char is '/'
+                (tmpl_i + 1 < tmpl_len && template[tmpl_i + 1] == '/') ||
+                // it's the end of the string
+                tmpl_i == tmpl_len - 1
+            )
         );
+
         if(template[tmpl_i] == '+' && is_true_wildcard) {
+            // save the parameter from source topic
             int param_len = chars_until(source + src_i, '/');
             char* param = (char*)os_zalloc(param_len + 1);
             os_strncpy(param, source + src_i, param_len);
@@ -121,10 +132,13 @@ uint8_t match_topic(char* template, char* source, char* args[])
         tmpl_i ++;
     } while(tmpl_i < tmpl_len && src_i < src_len);
 
+    // by the end of the comparison both indexes must have reached their limit
     if(tmpl_i != tmpl_len || src_i != src_len) {
         matched = 0;
     }
 
+    // free the the args if not matched. if there was a match, than it is
+    // the callers job to free the args
     if(matched == 0) {
         for(i = 0; i < args_count; i++) {
             os_free(args[i]);
@@ -146,6 +160,7 @@ mqtt_data_cb(uint32_t *args, const char* topic, uint32_t topic_len,
     char* topic_buf = (char*)os_zalloc(topic_len + 1);
     char* data_buf = (char*)os_zalloc(data_len + 1);
 
+    // get required structures
     MQTT_Client* client = (MQTT_Client*)args;
     MQTTRPC_Conf* rpc_conf = (MQTTRPC_Conf*)client->user_data;
     const MQTTRPC_Topic_Map* topic_map = rpc_conf->handlers;
@@ -164,7 +179,7 @@ mqtt_data_cb(uint32_t *args, const char* topic, uint32_t topic_len,
         should_try_to_match = 0;
         RPC_INFO("MQTTRPC: Received topic shorter than base\r\n");
     } else {
-        // Try to match only the part after base_topic, without any trailing /
+        // Try to match only the part after base_topic, without the trailing / after it
         to_match = topic_buf + os_strlen(rpc_conf->base_topic);
         if(os_strlen(to_match) != 0 && to_match[0] == '/') {
             to_match ++;
