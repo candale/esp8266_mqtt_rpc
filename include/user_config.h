@@ -20,7 +20,7 @@
 
 #define MQTT_CLIENT_ID      "test1"
 #define MQTT_USER           "test1"
-#define MQTT_PASS           "bambilica11"
+#define MQTT_PASS           "pass"
 #define MQTT_CLEAN_SESSION  1
 #define MQTT_KEEPALIVE      120
 
