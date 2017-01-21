@@ -2,7 +2,7 @@
 #define __USER_CONFIG_H_
 
 #define DEBUG_ON
-// #define MQTT_DEBUG_ON
+#define MQTT_DEBUG_ON
 
 // WIFI CONFIGURATION
 #define WIFI_SSID "ssid"
@@ -18,9 +18,9 @@
 #define MQTT_BUF_SIZE   1024
 #define MQTT_KEEPALIVE  120
 
-#define MQTT_CLIENT_ID      "mycoolid"
-#define MQTT_USER           "lol"
-#define MQTT_PASS           "pass"
+#define MQTT_CLIENT_ID      "test1"
+#define MQTT_USER           "test1"
+#define MQTT_PASS           "bambilica11"
 #define MQTT_CLEAN_SESSION  1
 #define MQTT_KEEPALIVE      120
 

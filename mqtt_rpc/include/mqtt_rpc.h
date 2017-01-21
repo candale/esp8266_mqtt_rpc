@@ -25,6 +25,7 @@
     .online_qos = 0, \
     .online_retain = 0, \
     .break_on_first = 0, \
+    .connected_cb = 0, \
     ## __VA_ARGS__ }
 
 typedef struct _mqttrpc_conf MQTTRPC_Conf;
@@ -34,6 +35,7 @@ typedef int (*MQTTRPC_Handler)(MQTTRPC_Conf* mqtt_rpc, char* data, char* args[],
 struct _mqttrpc_conf {
     MQTT_Client* _mqtt_client;
     const MQTTRPC_Topic_Map* handlers;
+    MqttCallback connected_cb;
     const char* offline_message;
     const char* online_message;
     const char* base_topic;

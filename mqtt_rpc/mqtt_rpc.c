@@ -30,10 +30,16 @@ mqtt_connected_cb(uint32_t *args)
     }
 
     // TODO: publish all specs
+    // Publish that we are online
     MQTT_Publish(
         mqtt_client, rpc_conf->status_topic, rpc_conf->online_message,
         os_strlen(rpc_conf->online_message), rpc_conf->online_qos,
         rpc_conf->online_retain);
+
+    // Call user `connected` callback
+    if(rpc_conf->connected_cb) {
+        rpc_conf->connected_cb((uint32_t*)rpc_conf);
+    }
 }
 
 
@@ -199,11 +205,16 @@ mqtt_data_cb(uint32_t *args, const char* topic, uint32_t topic_len,
 
             topic_map->handler(rpc_conf, data_buf, args, no_args);
 
+            RPC_INFO("Called handler, doing cleanup\r\n");
+
             for(i = 0; i < no_args; i++) {
                 os_free(args[i]);
             }
 
+            RPC_INFO("Did cleanup\r\n");
+
             if(rpc_conf->break_on_first) {
+                RPC_INFO("BREAKED\r\n");
                 break;
             }
         }
@@ -211,8 +222,15 @@ mqtt_data_cb(uint32_t *args, const char* topic, uint32_t topic_len,
         topic_map++;
     }
 
+    RPC_INFO("FREEING topic\r\n");
     os_free(topic_buf);
+    RPC_INFO("FREEING data\r\n");
     os_free(data_buf);
+}
+
+
+MQTTRPC_OnConnected(MQTTRPC_Conf* rpc_conf, MqttCallback connected_cb) {
+    rpc_conf->connected_cb = connected_cb;
 }
 
 
