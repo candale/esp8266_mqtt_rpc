@@ -6,8 +6,6 @@
 #include "osapi.h"
 
 
-#define MQTT_RPC_DEBUG_ON
-
 #define BASE_TOPIC "devices"
 #define STATUS_TOPIC "status"
 #define SPEC_TOPIC "spec"
