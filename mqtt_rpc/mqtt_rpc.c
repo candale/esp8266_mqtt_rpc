@@ -57,7 +57,6 @@ mqtt_published_cb(uint32_t *args)
     RPC_INFO("MQTTRPC: MQTT message published\r\n");
 
     MQTT_Client* client = (MQTT_Client*)args;
-    INFO("MQTT: Published\r\n");
 }
 
 
@@ -294,7 +293,7 @@ MQTTRPC_Publish(MQTTRPC_Conf* config, const char* topic, const char* data,
     os_strcat(pub_topic, topic);
 
     uint8_t result = MQTT_Publish(
-        config->_mqtt_client, pub_topic, data, data_len + os_strlen(topic), qos, retain);
+        config->_mqtt_client, pub_topic, data, data_len, qos, retain);
 
     os_free(pub_topic);
 
